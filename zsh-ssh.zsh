@@ -12,7 +12,7 @@ SSH_CONFIG_FILE="${SSH_CONFIG_FILE:-$HOME/.ssh/config}"
 # Parse the file and handle the include directive.
 _parse_config_file() {
   # Enable PCRE matching
-  setopt localoptions rematchpcre
+  # setopt localoptions rematchpcre
   unsetopt nomatch
 
   local config_file_path=$(realpath "$1")

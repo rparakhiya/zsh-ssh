@@ -342,16 +342,17 @@ Alias|->|Hostname|User|Desc
 }
 
 _set_lbuffer() {
-  local result selected_host connect_cmd is_fzf_result
+  local result selected_host connect_cmd is_fzf_result cmd
   result="$1"
   is_fzf_result="$2"
+  cmd="$3"
 
   if [ "$is_fzf_result" = false ] ; then
     result=$(cut -f 1 -d "|" <<< ${result})
   fi
 
   selected_host=$(cut -f 1 -d " " <<< ${result})
-  connect_cmd="ssh ${selected_host}"
+  connect_cmd="${cmd} ${selected_host}"
 
   LBUFFER="$connect_cmd"
 }
@@ -359,13 +360,15 @@ _set_lbuffer() {
 fzf_complete_ssh() {
   local tokens cmd result key selection fuzzy_input
   setopt localoptions noshwordsplit noksh_arrays noposixbuiltins
+  local -a ssh_commands=(${ZSH_SSH_COMMANDS:-ssh})
 
   tokens=(${(z)LBUFFER})
   cmd=${tokens[1]}
 
-  if [[ "$LBUFFER" =~ "^ *ssh$" ]]; then
+  # Still typing the command name itself (e.g. `ssh` -> `ssh-add`), so complete that normally.
+  if (( $#tokens <= 1 )) && [[ "$LBUFFER" != *' ' ]]; then
     zle ${fzf_ssh_default_completion:-expand-or-complete}
-  elif [[ "$cmd" == "ssh" ]]; then
+  elif (( ${ssh_commands[(Ie)$cmd]} )); then
     result=$(_ssh_host_list ${tokens[2, -1]})
     fuzzy_input="${LBUFFER#"$tokens[1] "}"
     if [[ "$fuzzy_input" == tag:* ]]; then
@@ -381,7 +384,7 @@ fzf_complete_ssh() {
     fi
 
     if [ $(echo $result | wc -l) -eq 1 ]; then
-      _set_lbuffer $result false
+      _set_lbuffer $result false $cmd
       zle reset-prompt
       # zle redisplay
       return
@@ -413,7 +416,7 @@ fzf_complete_ssh() {
       fi
 
       if [ -n "$selection" ]; then
-        _set_lbuffer "$selection" true
+        _set_lbuffer "$selection" true "$cmd"
         if [[ "$key" == "alt-enter" ]]; then
           zle reset-prompt
         else
